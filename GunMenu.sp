@@ -5,6 +5,8 @@
 #include "retakes/generic.sp"
 //#include <sdkhooks>
 
+// Ref: https://github.com/BatMen/csgo-retakes-splewis-convar-weapon-allocator/blob/master/retakes_standardallocator.sp
+
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -126,7 +128,6 @@ public void Retakes_OnWeaponsAllocated(ArrayList t_players, ArrayList ct_players
 }
 
 // Updates client weapon settings according to their cookies.
-// Ref: https://github.com/BatMen/csgo-retakes-splewis-convar-weapon-allocator/blob/master/retakes_standardallocator.sp#L200
 public void OnClientCookiesCached(int client) {
 	ct_pistol_round_choices[client] = GetCookieInt(client, ct_pistol_round_choice_cookie);
 	t_pistol_round_choices[client] = GetCookieInt(client, t_pistol_round_choice_cookie);
