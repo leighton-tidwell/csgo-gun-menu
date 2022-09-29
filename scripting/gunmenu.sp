@@ -21,16 +21,19 @@
 #define TOTAL_HE_T 2
 #define TOTAL_MOLOTOVS_CT 1
 #define TOTAL_MOLOTOVS_T 1
+#define TOTAL_GRENADES_PER_PLAYER 2
+#define TOTAL_FLASHBANGS_PER_PLAYER 2
+#define TOTAL_CHANCES_TO_GET_NADE 10
 
 // Global Variables
-int used_t_he = 0;
-int used_ct_he = 0;
-int used_t_smoke = 0;
-int used_ct_smoke = 0;
-int used_t_flash = 0;
-int used_ct_flash = 0;
-int used_t_molotov = 0;
-int used_ct_molotov = 0;
+int given_t_he = 0;
+int given_ct_he = 0;
+int given_t_smoke = 0;
+int given_ct_smoke = 0;
+int given_t_flash = 0;
+int given_ct_flash = 0;
+int given_t_molotov = 0;
+int given_ct_molotov = 0;
 
 // CT Rifle Constants
 const int rifle_choice_ct_famas = 1;
@@ -58,9 +61,8 @@ const int rifle_choice_t_ssg08 = 4;
 const int pistol_choice_t_glock = 1;
 const int pistol_choice_t_p250 = 2;
 const int pistol_choice_t_tec9 = 3;
-const int pistol_choice_t_cz = 4;
-const int pistol_choice_t_deagle = 5;
-const int pistol_choice_t_r8 = 6;
+const int pistol_choice_t_deagle = 4;
+const int pistol_choice_t_r8 = 5;
 
 // Arrays of player choices
 int ct_pistol_round_choices[MAXPLAYERS+1];
@@ -84,7 +86,7 @@ Handle awp_choice_cookie = INVALID_HANDLE;
 public Plugin myinfo = 
 {
 	name = "Retakes: Gun Menu",
-	author = "",
+	author = "CSGO Haven",
 	description = "A private gun menu.",
 	version = "1.0.0",
 	url = ""
@@ -92,13 +94,17 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	ct_pistol_round_choice_cookie = RegClientCookie("retakes_ct_pistol_round_choice", "Currently selected CT pistol (pistol round) choice.", CookieAccess_Private);
+	// Register client choices
+	ct_pistol_round_choice_cookie = RegClientCookie("xxxx_this_is_raddd", "Cdasfdfasfasdfdsaurrently selected CT pistol (pistol round) choice.", CookieAccess_Private);
 	t_pistol_round_choice_cookie = RegClientCookie("retakes_t_pistol_round_choice", "Currently selected T pistol (pistol round) choice.", CookieAccess_Private);
 	ct_pistol_choice_cookie = RegClientCookie("retakes_ct_pistol_choice", "Currently selected CT pistol choice.", CookieAccess_Private);
 	t_pistol_choice_cookie = RegClientCookie("retakes_t_pistol_choice", "Currently selected T pistol choice.", CookieAccess_Private);
 	ct_rifle_choice_cookie = RegClientCookie("retakes_ct_rifle_choice", "Currently selected CT rifle choice.", CookieAccess_Private);
 	t_rifle_choice_cookie = RegClientCookie("retakes_t_rifle_choice", "Currently selected T rifle choice.", CookieAccess_Private);
 	awp_choice_cookie = RegClientCookie("retakes_awp_choice", "Currently selected AWP choice.", CookieAccess_Private);
+
+	// Register Commands
+	RegConsoleCmd("sm_guns", CMD_GUNS);
 }
 
 public void OnClientConnected(int client) {
@@ -112,15 +118,10 @@ public void OnClientConnected(int client) {
 	player_side[client] = 0;
 }
 
-public Action OnClientSayCommand(int client, const char[] command, const char[] args) {
-	char guns_chat_commands[][] = { "/gun", "/guns", "gun", "guns", ".gun", ".guns", "!gun", "!guns", "gnus"};
-	for (int i = 0; i < sizeof(guns_chat_commands); i++) {
-		if (strcmp(args[0], guns_chat_commands[i], false) == 0) {
-			GiveMainMenu(client);
-		}
-	}
-
-	return Plugin_Continue;
+public Action CMD_GUNS(int client, int args)
+{
+	GiveMainMenu(client);
+	return Plugin_Handled;
 }
 
 public void Retakes_OnWeaponsAllocated(ArrayList t_players, ArrayList ct_players, Bombsite bombsite) {
@@ -136,100 +137,138 @@ public void OnClientCookiesCached(int client) {
 	ct_rifle_choices[client] = GetCookieInt(client, ct_rifle_choice_cookie);
 	t_rifle_choices[client] = GetCookieInt(client, t_rifle_choice_cookie);
 	awp_choices[client] = GetCookieBool(client, awp_choice_cookie);
+
+	// Print all of the above cookies to server
+	PrintToServer("Client %N's cookies:", client);
+	PrintToServer("ct_pistol_round_choices: %d", ct_pistol_round_choices[client]);
+	PrintToServer("t_pistol_round_choices: %d", t_pistol_round_choices[client]);
+	PrintToServer("ct_pistol_choices: %d", ct_pistol_choices[client]);
+	PrintToServer("t_pistol_choices: %d", t_pistol_choices[client]);
+	PrintToServer("ct_rifle_choices: %d", ct_rifle_choices[client]);
+	PrintToServer("t_rifle_choices: %d", t_rifle_choices[client]);
+	PrintToServer("awp_choices: %d", awp_choices[client]);
 }
 
 // Calculate nades
 static void SetNades(char nades[NADE_STRING_LENGTH], bool is_terrorist, bool is_pistol_round, int client) {
-	nades = "";
+	nades = ""; // An array of characters representing the nade (i.e. "mf" = ['Molly', 'Flash'])
 
+	// Team totals for nade type
 	int total_he_allowed = is_terrorist ? TOTAL_HE_T : TOTAL_HE_CT;
 	int total_flashbang_allowed = is_terrorist ? TOTAL_FLASHBANGS_T : TOTAL_FLASHBANGS_CT;
 	int total_molotov_allowed = is_terrorist ? TOTAL_MOLOTOVS_T : TOTAL_MOLOTOVS_CT;
 	int total_smoke_allowed = is_terrorist ? TOTAL_SMOKES_T : TOTAL_SMOKES_CT;
 
-	int he_number = 0;
-	int smoke_number = 0;
-	int flashbang_number = 0;
-	int molotov_number = 0;
+	// Total nades per type for player
+	int player_he_number = 0;
+	int player_smoke_number = 0;
+	int player_flashbang_number = 0;
+	int player_molotov_number = 0;
 
-	int max_grenades_per_player = 2;
-	int max_flashbangs_per_player = 2;
+	// Set the total nades allowed per player, per type, pistol rounds only allow 1 nade per player.
+	int max_grenades_per_player = is_pistol_round ? 1 : TOTAL_GRENADES_PER_PLAYER;
+	int max_flashbangs_per_player = is_pistol_round ? 1 : TOTAL_FLASHBANGS_PER_PLAYER;
 
 	int random_number;
-	int index = 0;
+	int total_player_nade_count = 0; // Used as an index for the nades char[]
 
-	for (int i = 0; i < 10; i++) {
+	// We do not want to give nades to default pistol players
+	if (is_pistol_round && is_terrorist && (t_pistol_round_choices[client] == pistol_choice_t_glock))
+		return;
+
+	if (is_pistol_round && !is_terrorist && (ct_pistol_round_choices[client] == pistol_choice_ct_usp || ct_pistol_round_choices[client] == pistol_choice_ct_hkp2000))
+		return;
+
+	// Loop through and give player x chances to get a nade
+	for (int i = 0; i < TOTAL_CHANCES_TO_GET_NADE; i++) {
+		// We want to stop if player has max amount of nades already
+		if (total_player_nade_count >= max_grenades_per_player)
+			break;
+
 		random_number = GetRandomInt(1, 4);
-
-		if (max_grenades_per_player <= index)
-			break;
-
-		// No nades for default pistol players as they have armor
-		if (is_pistol_round && is_terrorist && t_pistol_choices[client] == pistol_choice_t_glock)
-			break;
-
-		if (is_pistol_round && !is_terrorist && (ct_pistol_choices[client] == pistol_choice_ct_hkp2000 || ct_pistol_choices[client] == pistol_choice_ct_usp))
-			break;
-		
-		// Only one nade for pistol round
-		if (is_pistol_round && index >= 1)
-			break;
-
+		// Based on the number generated, give/don't give a nade
 		switch (random_number) {
 			case 1: {
-				if ((is_terrorist ? used_t_he : used_ct_he) < total_he_allowed && he_number == 0) {
-					nades[index] = 'h';
-					index++;
-					he_number++;
+				int given_he = is_terrorist ? given_t_he : given_ct_he;
+				// If we haven't given out more than the total HE's and
+				// this player hasn't recieved an HE yet
+				if (given_he < total_he_allowed && player_he_number == 0) {
+					nades[total_player_nade_count] = 'h';
+					total_player_nade_count++;
+					player_he_number++;
 					if (is_terrorist)
-						used_t_he++;
+						given_t_he++;
 					else
-						used_ct_he++;
+						given_ct_he++;
 				}
 			}
 			case 2: {
-				if ((is_terrorist ? used_t_smoke : used_ct_smoke) < total_smoke_allowed && smoke_number == 0) {
-					nades[index] = 's';
-					index++;
-					smoke_number++;
+				int given_smoke = is_terrorist ? given_t_smoke : given_ct_smoke;
+				if (given_smoke < total_smoke_allowed && player_smoke_number == 0) {
+					nades[total_player_nade_count] = 's';
+					total_player_nade_count++;
+					player_smoke_number++;
 					if (is_terrorist)
-						used_t_smoke++;
+						given_t_smoke++;
 					else
-						used_ct_smoke++;
+						given_ct_smoke++;
 				}
 			}
 			case 3: {
-				if ((is_terrorist ? used_t_flash : used_t_flash) < total_flashbang_allowed && flashbang_number < max_flashbangs_per_player) {
-					nades[index] = 'f';
-					index++;
-					flashbang_number++;
+				int given_flash = is_terrorist ? given_t_flash : given_ct_flash;
+				if (given_flash < total_flashbang_allowed && player_flashbang_number < max_flashbangs_per_player) {
+					nades[total_player_nade_count] = 'f';
+					total_player_nade_count++;
+					player_flashbang_number++;
 					if (is_terrorist)
-						used_t_flash++;
+						given_t_flash++;
 					else
-						used_ct_flash++;
+						given_ct_flash++;
 				}
 			}
 			case 4: {
-				if ((is_terrorist ? used_t_molotov : used_ct_molotov) < total_molotov_allowed && molotov_number == 0) {
-					nades[index] = is_terrorist ? 'm' : 'i';
-					index++;
-					molotov_number++;
-					if (is_terrorist) 
-						used_t_molotov++;
+				int given_molotov = is_terrorist ? given_t_molotov : given_ct_molotov;
+				if (given_molotov < total_molotov_allowed && player_molotov_number == 0) {
+					nades[total_player_nade_count] = is_terrorist ? 'm' : 'i';
+					total_player_nade_count++;
+					player_molotov_number++;
+					if (is_terrorist)
+						given_t_molotov++;
 					else
-						used_ct_molotov++;
+						given_ct_molotov++;
 				}
 			}
 		}
-	}	
+	}
 }
 
 // Actual weapon allocator
 public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite bombsite) {
+	// Reset global variables
+	given_t_he = 0;
+	given_ct_he = 0;
+	given_t_smoke = 0;
+	given_ct_smoke = 0;
+	given_t_flash = 0;
+	given_ct_flash = 0;
+	given_t_molotov = 0;
+	given_ct_molotov = 0;
+
 	int total_t_players = GetArraySize(t_players);
 	int total_ct_players = GetArraySize(ct_players);
 
 	bool is_pistol_round = Retakes_GetRetakeRoundsPlayed() < TOTAL_PISTOL_ROUNDS;
+	
+
+	PrintToServer("Weapon allocator");
+	PrintToServer("The total number of rounds played: %i", Retakes_GetRetakeRoundsPlayed());
+
+	if (!is_pistol_round) {
+		PrintToServer("It is currently not a pistol round.");
+	}
+	else {
+		PrintToServer("It is currently a pistol round.");
+	}
 
 	char primary[WEAPON_STRING_LENGTH];
 	char secondary[WEAPON_STRING_LENGTH];
@@ -280,7 +319,7 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 				int player_t_rifle_choice = t_rifle_choices[client];
 				switch (player_t_rifle_choice) {
 					case rifle_choice_t_sg553:
-						primary = "weapon_sg553";
+						primary = "weapon_sg556";
 					case rifle_choice_t_galil:
 						primary = "weapon_galilar";
 					case rifle_choice_t_ssg08:
@@ -329,6 +368,12 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 		kit = GetKit(is_pistol_round, client);
 
 		SetNades(nades, true, is_pistol_round, client);
+		PrintToServer("T player %i", client);
+		PrintToServer("Primary: %s", primary);
+		PrintToServer("Secondary: %s", secondary);
+		PrintToServer("Nades: %s", nades);
+		PrintToServer("Health: %i", health);
+		PrintToServer("Kevlar: %i", kevlar);
 
 		Retakes_SetPlayerInfo(client, primary, secondary, nades, health, kevlar, helmet, kit);
 	}
@@ -378,7 +423,7 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 					case rifle_choice_ct_ssg08:
 						primary = "weapon_ssg08";
 					default:
-						primary = "weapon_m4a4";
+						primary = "weapon_m4a1";
 				}
 			}
 
@@ -394,6 +439,8 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 					secondary = "weapon_deagle";
 				case pistol_choice_ct_r8:
 					secondary = "weapon_revolver";
+				case pistol_choice_ct_hkp2000:
+					secondary = "weapon_hkp2000";
 				default:
 					secondary = "weapon_usp_silencer";
 			}
@@ -412,6 +459,8 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 					secondary = "weapon_deagle";
 				case pistol_choice_ct_r8:
 					secondary = "weapon_revolver";
+				case pistol_choice_ct_hkp2000:
+					secondary = "weapon_hkp2000";
 				default:
 					secondary = "weapon_usp_silencer";
 			}
@@ -426,33 +475,36 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 
 		SetNades(nades, false, is_pistol_round, client);
 
+		int player_pistol_round_choice_ct = GetCookieInt(client, ct_pistol_round_choice_cookie);
+		int player_pistol_round_choice_t = GetCookieInt(client, t_pistol_round_choice_cookie);
+
 		Retakes_SetPlayerInfo(client, primary, secondary, nades, health, kevlar, helmet, kit);
 	}
 }
 
 // takes the pistol round and client
 // if they do not have default pistol for pistol round, they will not have kevlar
-public bool GetKevlar(bool is_pistol_round, int client) {
+public int GetKevlar(bool is_pistol_round, int client) {
 	if (is_pistol_round) {
 		if(player_side[client] == 2) {
 			// CT Side
-			if(ct_pistol_round_choices[client] != pistol_choice_ct_usp || ct_pistol_round_choices[client] != pistol_choice_ct_hkp2000) {
-				return false;
+			if(ct_pistol_round_choices[client] != pistol_choice_ct_usp && ct_pistol_round_choices[client] != pistol_choice_ct_hkp2000 && ct_pistol_round_choices[client] != 0) {
+				return 0;
 			}
-			
-			return true;
+
+			return 100;
 		} 
 		else {
 			// T Side
 			if(t_pistol_round_choices[client] != pistol_choice_t_glock) {
-				return false;
+				return 0;
 			}
 			
-			return true;
+			return 100;
 		}
 	}
 
-	return true;
+	return 100;
 }
 
 // takes in the pistol round, and client
@@ -472,20 +524,18 @@ public void GiveCTPistolRoundMenu(int client) {
 	AddMenuInt(menu, pistol_choice_ct_fiveseven, "Five-Seven");
 	AddMenuInt(menu, pistol_choice_ct_cz, "CZ75-Auto");
 	AddMenuInt(menu, pistol_choice_ct_deagle, "Desert Eagle");
+	AddMenuInt(menu, pistol_choice_ct_r8, "R8");
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int CTPistolRoundMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int CTPistolRoundMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int gun_choice = GetMenuInt(menu, param2);
 		ct_pistol_round_choices[client] = gun_choice;
 		SetCookieInt(client, ct_pistol_round_choice_cookie, gun_choice);
 
-		if(player_side[client] != 2)
-			GiveTPistolRoundMenu(client);
-		else
-			GiveCTPistolRoundMenu(client);
+		GiveAwpMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -503,17 +553,14 @@ public void GiveTPistolRoundMenu(int client) {
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int TPistolRoundMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int TPistolRoundMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int gun_choice = GetMenuInt(menu, param2);
 		t_pistol_round_choices[client] = gun_choice;
 		SetCookieInt(client, t_pistol_round_choice_cookie, gun_choice);
 
-		if(player_side[client] != 1)
-			GiveCTPistolRoundMenu(client);
-		else
-			GiveTPistolRoundMenu(client);
+		GiveAwpMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -529,20 +576,18 @@ public void GiveCTPistolMenu(int client) {
 	AddMenuInt(menu, pistol_choice_ct_fiveseven, "Five-Seven");
 	AddMenuInt(menu, pistol_choice_ct_cz, "CZ75-Auto");
 	AddMenuInt(menu, pistol_choice_ct_deagle, "Desert Eagle");
+	AddMenuInt(menu, pistol_choice_ct_r8, "R8");
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int CTPistolMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int CTPistolMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int gun_choice = GetMenuInt(menu, param2);
 		ct_pistol_choices[client] = gun_choice;
 		SetCookieInt(client, ct_pistol_choice_cookie, gun_choice);
 
-		if(player_side[client] != 2)
-			GiveTPistolMenu(client);
-		else
-			GiveCTPistolMenu(client);
+		GiveCTPistolRoundMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -555,23 +600,19 @@ public void GiveTPistolMenu(int client) {
 	AddMenuInt(menu, pistol_choice_t_glock, "Glock");
 	AddMenuInt(menu, pistol_choice_t_p250, "P250");
 	AddMenuInt(menu, pistol_choice_t_tec9, "Tec-9");
-	AddMenuInt(menu, pistol_choice_t_cz, "CZ");
 	AddMenuInt(menu, pistol_choice_t_deagle, "Deagle");
 	AddMenuInt(menu, pistol_choice_t_r8, "R8");
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int TPistolMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int TPistolMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int gun_choice = GetMenuInt(menu, param2);
 		t_pistol_choices[client] = gun_choice;
 		SetCookieInt(client, t_pistol_choice_cookie, gun_choice);
 
-		if(player_side[client] != 1)
-			GiveCTPistolMenu(client);
-		else
-			GiveTPistolMenu(client);
+		GiveTPistolRoundMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -589,13 +630,14 @@ public void GiveCTRifleMenu(int client) {
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int CTRifleMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int CTRifleMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int gun_choice = GetMenuInt(menu, param2);
 		ct_rifle_choices[client] = gun_choice;
 		SetCookieInt(client, ct_rifle_choice_cookie, gun_choice);
-		GiveAwpMenu(client);
+		
+		GiveCTPistolMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -612,14 +654,14 @@ public void GiveTRifleMenu(int client) {
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int TRifleMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int TRifleMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int gun_choice = GetMenuInt(menu, param2);
 		t_rifle_choices[client] = gun_choice;
 		SetCookieInt(client, t_rifle_choice_cookie, gun_choice);
 
-		GiveAwpMenu(client);
+		GiveTPistolMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -633,12 +675,13 @@ public void GiveAwpMenu(int client) {
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int AwpMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int AwpMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int allow_awps = GetMenuInt(menu, param2);
 		awp_choices[client] = allow_awps;
 		SetCookieBool(client, awp_choice_cookie,allow_awps);
+
 		CloseHandle(menu);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
@@ -649,17 +692,12 @@ public int AwpMenuHandler(Handle menu, MenuAction action, int param1, int param2
 public void GiveMainMenu(int client) {
 	Handle menu = CreateMenu(MainMenuHandler);
 	SetMenuTitle(menu, "Main menu: ");
-	AddMenuInt(menu, 1, "Select T rifles");
-	AddMenuInt(menu, 2, "Select T pistols");
-	AddMenuInt(menu, 3, "Select T pistol round weapon");
-	AddMenuInt(menu, 4, "Select CT rifles");
-	AddMenuInt(menu, 5, "Select CT pistols");
-	AddMenuInt(menu, 6, "Select CT pistol round weapon");
-	AddMenuInt(menu, 7, "Recieve awps?");
+	AddMenuInt(menu, 1, "Select T loadout");
+	AddMenuInt(menu, 2, "Select CT loadout");
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
-public int MainMenuHandler(Handle menu, MenuAction action, int param1, int param2) {
+public int MainMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		int client = param1;
 		int open_menu = GetMenuInt(menu, param2);
@@ -667,17 +705,7 @@ public int MainMenuHandler(Handle menu, MenuAction action, int param1, int param
 			case 1:
 				GiveTRifleMenu(client);
 			case 2:
-				GiveTPistolMenu(client);
-			case 3:
-				GiveTPistolRoundMenu(client);
-			case 4:
 				GiveCTRifleMenu(client);
-			case 5:
-				GiveCTPistolMenu(client);
-			case 6:
-				GiveCTPistolRoundMenu(client);
-			case 7:
-				GiveAwpMenu(client);
 		}
 		CloseHandle(menu);
 	} else if (action == MenuAction_End) {
