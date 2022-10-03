@@ -11,6 +11,7 @@
 #pragma newdecls required
 
 #define MENU_TIME_LENGTH 15
+#define FORCE_ROUND_FREQUENCY 4
 #define TOTAL_PISTOL_ROUNDS 6
 #define TOTAL_AWPS_PER_TEAM 1
 #define TOTAL_FLASHBANGS_CT 5
@@ -34,6 +35,7 @@ int given_t_flash = 0;
 int given_ct_flash = 0;
 int given_t_molotov = 0;
 int given_ct_molotov = 0;
+int rounds_since_force_round = 0;
 
 // CT Rifle Constants
 const int rifle_choice_ct_famas = 1;
@@ -51,6 +53,12 @@ const int pistol_choice_ct_cz = 5;
 const int pistol_choice_ct_deagle = 6;
 const int pistol_choice_ct_r8 = 7;
 
+// CT Force Constants
+const int force_choice_ct_ssg08 = 1;
+const int force_choice_ct_deagle = 2;
+const int force_choice_ct_mp9 = 3;
+const int force_choice_ct_famas = 4;
+
 // T Rifle Constants
 const int rifle_choice_t_galil = 1;
 const int rifle_choice_t_ak47 = 2;
@@ -64,9 +72,17 @@ const int pistol_choice_t_tec9 = 3;
 const int pistol_choice_t_deagle = 4;
 const int pistol_choice_t_r8 = 5;
 
+// T Force Constants
+const int force_choice_t_ssg08 = 1;
+const int force_choice_t_deagle = 2;
+const int force_choice_t_mac10 = 3;
+const int force_choice_t_galil = 4;
+
 // Arrays of player choices
 int ct_pistol_round_choices[MAXPLAYERS+1];
 int t_pistol_round_choices[MAXPLAYERS+1];
+int ct_force_round_choices[MAXPLAYERS+1];
+int t_force_round_choices[MAXPLAYERS+1];
 int ct_pistol_choices[MAXPLAYERS+1];
 int t_pistol_choices[MAXPLAYERS+1];
 int ct_rifle_choices[MAXPLAYERS+1];
@@ -77,6 +93,8 @@ int player_side[MAXPLAYERS+1];
 // Cookie Handles
 Handle ct_pistol_round_choice_cookie = INVALID_HANDLE;
 Handle t_pistol_round_choice_cookie = INVALID_HANDLE;
+Handle ct_force_round_choice_cookie = INVALID_HANDLE;
+Handle t_force_round_choice_cookie = INVALID_HANDLE;
 Handle ct_pistol_choice_cookie = INVALID_HANDLE;
 Handle t_pistol_choice_cookie = INVALID_HANDLE;
 Handle ct_rifle_choice_cookie = INVALID_HANDLE;
@@ -97,6 +115,8 @@ public void OnPluginStart()
 	// Register client choices
 	ct_pistol_round_choice_cookie = RegClientCookie("xxxx_this_is_raddd", "Cdasfdfasfasdfdsaurrently selected CT pistol (pistol round) choice.", CookieAccess_Private);
 	t_pistol_round_choice_cookie = RegClientCookie("retakes_t_pistol_round_choice", "Currently selected T pistol (pistol round) choice.", CookieAccess_Private);
+	ct_force_round_choice_cookie = RegClientCookie("retakes_ct_force_round_choice", "Currently selected CT force choice.", CookieAccess_Private);
+	t_force_round_choice_cookie = RegClientCookie("retakes_t_force_round_choice", "Currently selected T force choice.", CookieAccess_Private);
 	ct_pistol_choice_cookie = RegClientCookie("retakes_ct_pistol_choice", "Currently selected CT pistol choice.", CookieAccess_Private);
 	t_pistol_choice_cookie = RegClientCookie("retakes_t_pistol_choice", "Currently selected T pistol choice.", CookieAccess_Private);
 	ct_rifle_choice_cookie = RegClientCookie("retakes_ct_rifle_choice", "Currently selected CT rifle choice.", CookieAccess_Private);
@@ -110,6 +130,8 @@ public void OnPluginStart()
 public void OnClientConnected(int client) {
 	ct_pistol_round_choices[client] = pistol_choice_ct_usp;
 	t_pistol_round_choices[client] = pistol_choice_t_glock;
+	ct_force_round_choices[client] = force_choice_ct_deagle;
+	t_force_round_choices[client] = force_choice_t_deagle;
 	ct_pistol_choices[client] = pistol_choice_ct_usp;
 	t_pistol_choices[client] = pistol_choice_t_glock;
 	ct_rifle_choices[client] = rifle_choice_ct_m4a4;
@@ -137,16 +159,6 @@ public void OnClientCookiesCached(int client) {
 	ct_rifle_choices[client] = GetCookieInt(client, ct_rifle_choice_cookie);
 	t_rifle_choices[client] = GetCookieInt(client, t_rifle_choice_cookie);
 	awp_choices[client] = GetCookieBool(client, awp_choice_cookie);
-
-	// Print all of the above cookies to server
-	PrintToServer("Client %N's cookies:", client);
-	PrintToServer("ct_pistol_round_choices: %d", ct_pistol_round_choices[client]);
-	PrintToServer("t_pistol_round_choices: %d", t_pistol_round_choices[client]);
-	PrintToServer("ct_pistol_choices: %d", ct_pistol_choices[client]);
-	PrintToServer("t_pistol_choices: %d", t_pistol_choices[client]);
-	PrintToServer("ct_rifle_choices: %d", ct_rifle_choices[client]);
-	PrintToServer("t_rifle_choices: %d", t_rifle_choices[client]);
-	PrintToServer("awp_choices: %d", awp_choices[client]);
 }
 
 // Calculate nades
@@ -172,7 +184,13 @@ static void SetNades(char nades[NADE_STRING_LENGTH], bool is_terrorist, bool is_
 	int random_number;
 	int total_player_nade_count = 0; // Used as an index for the nades char[]
 
-	// We do not want to give nades to default pistol players
+	// We do not want to give nades to default pistol players or players with a deagle
+	if (is_pistol_round && is_terrorist && (t_pistol_round_choices[client] == pistol_choice_t_deagle))
+		return;
+
+	if (is_pistol_round && !is_terrorist && (ct_pistol_round_choices[client] == pistol_choice_ct_deagle))
+		return;
+
 	if (is_pistol_round && is_terrorist && (t_pistol_round_choices[client] == pistol_choice_t_glock))
 		return;
 
@@ -254,11 +272,17 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 	given_t_molotov = 0;
 	given_ct_molotov = 0;
 
+	if (rounds_since_force_round >= FORCE_ROUND_FREQUENCY) {
+		rounds_since_force_round = 0;
+	}
+
+	rounds_since_force_round++;
+
 	int total_t_players = GetArraySize(t_players);
 	int total_ct_players = GetArraySize(ct_players);
 
 	bool is_pistol_round = Retakes_GetRetakeRoundsPlayed() < TOTAL_PISTOL_ROUNDS;
-	
+	bool is_force_round = !is_pistol_round && rounds_since_force_round == FORCE_ROUND_FREQUENCY;
 
 	PrintToServer("Weapon allocator");
 	PrintToServer("The total number of rounds played: %i", Retakes_GetRetakeRoundsPlayed());
@@ -266,8 +290,11 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 	if (!is_pistol_round) {
 		PrintToServer("It is currently not a pistol round.");
 	}
+	else if (is_force_round) {
+		PrintToServer("It is currently a force round.");
+	}
 	else {
-		PrintToServer("It is currently a pistol round.");
+		PrintToServer("It is currently a rifle round.");
 	}
 
 	char primary[WEAPON_STRING_LENGTH];
@@ -309,7 +336,7 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 		player_side[client] = 1;
 
 		primary = "";
-		if (!is_pistol_round) {
+		if (!is_pistol_round && !is_force_round) {
 			int give_awp_randomizer = GetRandomInt(0, 1);
 			if(give_t_awp && awp_choices[client] && give_awp_randomizer == 1 && awps_given < TOTAL_AWPS_PER_TEAM) {
 				primary = "weapon_awp";
@@ -344,6 +371,21 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 			}
 		}
 
+		if (is_force_round) {
+			int player_t_force_round_choice = t_force_round_choices[client];
+			secondary = "weapon_glock";
+			switch (player_t_force_round_choice) {
+				case force_choice_t_ssg08:
+					primary = "weapon_ssg08";
+				case force_choice_t_mac10:
+					primary = "weapon_mac10";
+				case force_choice_t_galil:
+					primary = "weapon_galilar";				
+				default:
+					secondary = "weapon_deagle";
+			}
+		}
+
 		if (is_pistol_round) {
 			int player_t_pistol_round_choice = t_pistol_round_choices[client];
 			switch (player_t_pistol_round_choice) {
@@ -368,13 +410,6 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 		kit = GetKit(is_pistol_round, client);
 
 		SetNades(nades, true, is_pistol_round, client);
-		PrintToServer("T player %i", client);
-		PrintToServer("Primary: %s", primary);
-		PrintToServer("Secondary: %s", secondary);
-		PrintToServer("Nades: %s", nades);
-		PrintToServer("Health: %i", health);
-		PrintToServer("Kevlar: %i", kevlar);
-
 		Retakes_SetPlayerInfo(client, primary, secondary, nades, health, kevlar, helmet, kit);
 	}
 
@@ -405,7 +440,7 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 		player_side[client] = 2;
 
 		primary = "";
-		if (!is_pistol_round) {
+		if (!is_pistol_round && !is_force_round) {
 			int give_awp_randomizer = GetRandomInt(0, 1);
 			if(give_ct_awp && awp_choices[client] && give_awp_randomizer == 1 && awps_given < TOTAL_AWPS_PER_TEAM) {
 				primary = "weapon_awp";
@@ -446,6 +481,21 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 			}
 		}
 
+		if (is_force_round) {
+			int player_ct_force_round_choice = ct_force_round_choices[client];
+			secondary = "weapon_usp_silencer";
+			switch (player_ct_force_round_choice) {
+				case force_choice_ct_ssg08:
+					primary = "weapon_ssg08";
+				case force_choice_ct_mp9:
+					primary = "weapon_mp9";
+				case force_choice_ct_famas:
+					primary = "weapon_famas";
+				default:
+					secondary = "weapon_deagle";
+			}
+		}
+
 		if (is_pistol_round) {
 			int player_ct_pistol_round_choice = ct_pistol_round_choices[client];
 			switch (player_ct_pistol_round_choice) {
@@ -475,11 +525,10 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 
 		SetNades(nades, false, is_pistol_round, client);
 
-		int player_pistol_round_choice_ct = GetCookieInt(client, ct_pistol_round_choice_cookie);
-		int player_pistol_round_choice_t = GetCookieInt(client, t_pistol_round_choice_cookie);
-
 		Retakes_SetPlayerInfo(client, primary, secondary, nades, health, kevlar, helmet, kit);
 	}
+
+	// TODO: Reset global counter of rounds since force round
 }
 
 // takes the pistol round and client
@@ -535,7 +584,7 @@ public int CTPistolRoundMenuHandler(Menu menu, MenuAction action, int param1, in
 		ct_pistol_round_choices[client] = gun_choice;
 		SetCookieInt(client, ct_pistol_round_choice_cookie, gun_choice);
 
-		GiveAwpMenu(client);
+		GiveMainMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -560,7 +609,7 @@ public int TPistolRoundMenuHandler(Menu menu, MenuAction action, int param1, int
 		t_pistol_round_choices[client] = gun_choice;
 		SetCookieInt(client, t_pistol_round_choice_cookie, gun_choice);
 
-		GiveAwpMenu(client);
+		GiveMainMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -587,7 +636,7 @@ public int CTPistolMenuHandler(Menu menu, MenuAction action, int param1, int par
 		ct_pistol_choices[client] = gun_choice;
 		SetCookieInt(client, ct_pistol_choice_cookie, gun_choice);
 
-		GiveCTPistolRoundMenu(client);
+		GiveAwpMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -612,7 +661,7 @@ public int TPistolMenuHandler(Menu menu, MenuAction action, int param1, int para
 		t_pistol_choices[client] = gun_choice;
 		SetCookieInt(client, t_pistol_choice_cookie, gun_choice);
 
-		GiveTPistolRoundMenu(client);
+		GiveAwpMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -682,7 +731,55 @@ public int AwpMenuHandler(Menu menu, MenuAction action, int param1, int param2) 
 		awp_choices[client] = allow_awps;
 		SetCookieBool(client, awp_choice_cookie,allow_awps);
 
+		GiveMainMenu(menu);
+	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
+	}
+}
+
+// Force Buy CT Menu
+public void GiveCTForceBuyMenu(int client) {
+	Handle menu = CreateMenu(CTForceBuyMenuHandler);
+	SetMenuTitle(menu, "Select a CT Force Round Weapon:");
+	AddMenuInt(menu, force_choice_ct_ssg08, "SSG 08");
+	AddMenuInt(menu, force_choice_ct_deagle, "Deagle");
+	AddMenuInt(menu, force_choice_ct_mp9, "MP9");
+	AddMenuInt(menu, force_choice_ct_famas, "FAMAS");
+	DisplayMenu(menu, client, MENU_TIME_LENGTH);
+}
+
+public int CTForceBuyMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
+	if (action == MenuAction_Select) {
+		int client = param1;
+		int gun_choice = GetMenuInt(menu, param2);
+		ct_force_round_choices[client] = gun_choice;
+		SetCookieInt(client, ct_force_round_choice_cookie, gun_choice);
+
+		GiveMainMenu(client);
+	} else if (action == MenuAction_End) {
+		CloseHandle(menu);
+	}
+}
+
+// Force Buy T Menu
+public void GiveTForceBuyMenu(int client) {
+	Handle menu = CreateMenu(TForceBuyMenuHandler);
+	SetMenuTitle(menu, "Select a CT Force Round Weapon:");
+	AddMenuInt(menu, force_choice_t_ssg08, "SSG 08");
+	AddMenuInt(menu, force_choice_t_deagle, "Deagle");
+	AddMenuInt(menu, force_choice_t_mac10, "MAC 10");
+	AddMenuInt(menu, force_choice_t_galil, "Galil");
+	DisplayMenu(menu, client, MENU_TIME_LENGTH);
+}
+
+public int TForceBuyMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
+	if (action == MenuAction_Select) {
+		int client = param1;
+		int gun_choice = GetMenuInt(menu, param2);
+		t_force_round_choices[client] = gun_choice;
+		SetCookieInt(client, t_force_round_choice_cookie, gun_choice);
+
+		GiveMainMenu(client);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -692,8 +789,12 @@ public int AwpMenuHandler(Menu menu, MenuAction action, int param1, int param2) 
 public void GiveMainMenu(int client) {
 	Handle menu = CreateMenu(MainMenuHandler);
 	SetMenuTitle(menu, "Main menu: ");
-	AddMenuInt(menu, 1, "Select T loadout");
-	AddMenuInt(menu, 2, "Select CT loadout");
+	AddMenuInt(menu, 1, "Select T Rifle Round Loadout");
+	AddMenuInt(menu, 2, "Select T Force Round Loadout");
+	AddMenuInt(menu, 3, "Select T Pistol Round Loadout");
+	AddMenuInt(menu, 4, "Select CT Rifle Round Loadout");
+	AddMenuInt(menu, 5, "Select CT Force Round Loadout");
+	AddMenuInt(menu, 6, "Select CT Pistol Round Loadout");
 	DisplayMenu(menu, client, MENU_TIME_LENGTH);
 }
 
@@ -705,7 +806,15 @@ public int MainMenuHandler(Menu menu, MenuAction action, int param1, int param2)
 			case 1:
 				GiveTRifleMenu(client);
 			case 2:
+				GiveTForceBuyMenu(client);
+			case 3:
+				GiveTPistolRoundMenu(client);
+			case 4:
 				GiveCTRifleMenu(client);
+			case 5:
+				GiveCTForceBuyMenu(client);
+			case 6:
+				GiveCTPistolRoundMenu(client);
 		}
 		CloseHandle(menu);
 	} else if (action == MenuAction_End) {
