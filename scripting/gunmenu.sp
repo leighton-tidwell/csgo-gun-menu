@@ -14,12 +14,12 @@
 #define FORCE_ROUND_FREQUENCY 4
 #define TOTAL_PISTOL_ROUNDS 6
 #define TOTAL_AWPS_PER_TEAM 1
-#define TOTAL_FLASHBANGS_CT 5
+#define TOTAL_FLASHBANGS_CT 3
 #define TOTAL_FLASHBANGS_T 3
-#define TOTAL_SMOKES_CT 2
-#define TOTAL_SMOKES_T 2
-#define TOTAL_HE_CT 2
-#define TOTAL_HE_T 2
+#define TOTAL_SMOKES_CT 1
+#define TOTAL_SMOKES_T 1
+#define TOTAL_HE_CT 1
+#define TOTAL_HE_T 1
 #define TOTAL_MOLOTOVS_CT 1
 #define TOTAL_MOLOTOVS_T 1
 #define TOTAL_GRENADES_PER_PLAYER 2
@@ -207,6 +207,8 @@ static void SetNades(char nades[NADE_STRING_LENGTH], bool is_terrorist, bool is_
 		// Based on the number generated, give/don't give a nade
 		switch (random_number) {
 			case 1: {
+				if(is_pistol_round) break;
+
 				int given_he = is_terrorist ? given_t_he : given_ct_he;
 				// If we haven't given out more than the total HE's and
 				// this player hasn't recieved an HE yet
@@ -245,6 +247,8 @@ static void SetNades(char nades[NADE_STRING_LENGTH], bool is_terrorist, bool is_
 				}
 			}
 			case 4: {
+				if(is_pistol_round) break;
+
 				int given_molotov = is_terrorist ? given_t_molotov : given_ct_molotov;
 				if (given_molotov < total_molotov_allowed && player_molotov_number == 0) {
 					nades[total_player_nade_count] = is_terrorist ? 'm' : 'i';
@@ -287,14 +291,17 @@ public void WeaponAllocator(ArrayList t_players, ArrayList ct_players, Bombsite 
 	PrintToServer("Weapon allocator");
 	PrintToServer("The total number of rounds played: %i", Retakes_GetRetakeRoundsPlayed());
 
-	if (!is_pistol_round) {
-		PrintToServer("It is currently not a pistol round.");
+	if (!is_pistol_round && !is_force_round) {
+		PrintToServer("It is currently a rifle round.");
+		PrintToChatAll("\x04[Retakes]\x01 It is currently a rifle round.");
 	}
 	else if (is_force_round) {
 		PrintToServer("It is currently a force round.");
+		PrintToChatAll("\x04[Retakes]\x01 It is currently a force round.");
 	}
 	else {
-		PrintToServer("It is currently a rifle round.");
+		PrintToServer("It is currently a pistol round.");
+		PrintToChatAll("\x04[Retakes]\x01 It is currently a pistol round.");
 	}
 
 	char primary[WEAPON_STRING_LENGTH];
