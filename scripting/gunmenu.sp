@@ -113,18 +113,18 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
 	// Register client choices
-	ct_pistol_round_choice_cookie = RegClientCookie("xxxx_this_is_raddd", "Cdasfdfasfasdfdsaurrently selected CT pistol (pistol round) choice.", CookieAccess_Private);
-	t_pistol_round_choice_cookie = RegClientCookie("retakes_t_pistol_round_choice", "Currently selected T pistol (pistol round) choice.", CookieAccess_Private);
-	ct_force_round_choice_cookie = RegClientCookie("retakes_ct_force_round_choice", "Currently selected CT force choice.", CookieAccess_Private);
-	t_force_round_choice_cookie = RegClientCookie("retakes_t_force_round_choice", "Currently selected T force choice.", CookieAccess_Private);
-	ct_pistol_choice_cookie = RegClientCookie("retakes_ct_pistol_choice", "Currently selected CT pistol choice.", CookieAccess_Private);
-	t_pistol_choice_cookie = RegClientCookie("retakes_t_pistol_choice", "Currently selected T pistol choice.", CookieAccess_Private);
-	ct_rifle_choice_cookie = RegClientCookie("retakes_ct_rifle_choice", "Currently selected CT rifle choice.", CookieAccess_Private);
-	t_rifle_choice_cookie = RegClientCookie("retakes_t_rifle_choice", "Currently selected T rifle choice.", CookieAccess_Private);
-	awp_choice_cookie = RegClientCookie("retakes_awp_choice", "Currently selected AWP choice.", CookieAccess_Private);
+	ct_pistol_round_choice_cookie = RegClientCookie("ct_pistol_round_choice", "Currently selected CT pistol (pistol round) choice.", CookieAccess_Private);
+	t_pistol_round_choice_cookie = RegClientCookie("t_pistol_round_choice", "Currently selected T pistol (pistol round) choice.", CookieAccess_Private);
+	ct_force_round_choice_cookie = RegClientCookie("ct_force_round_choice", "Currently selected CT force choice.", CookieAccess_Private);
+	t_force_round_choice_cookie = RegClientCookie("t_force_round_choice", "Currently selected T force choice.", CookieAccess_Private);
+	ct_pistol_choice_cookie = RegClientCookie("ct_pistol_choice", "Currently selected CT pistol choice.", CookieAccess_Private);
+	t_pistol_choice_cookie = RegClientCookie("t_pistol_choice", "Currently selected T pistol choice.", CookieAccess_Private);
+	ct_rifle_choice_cookie = RegClientCookie("ct_rifle_choice", "Currently selected CT rifle choice.", CookieAccess_Private);
+	t_rifle_choice_cookie = RegClientCookie("t_rifle_choice", "Currently selected T rifle choice.", CookieAccess_Private);
+	awp_choice_cookie = RegClientCookie("awp_choice", "Currently selected AWP choice.", CookieAccess_Private);
 
 	// Register Commands
-	RegConsoleCmd("sm_guns", CMD_GUNS);
+	RegConsoleCmd("guns", CMD_GUNS);
 }
 
 public void OnClientConnected(int client) {
