@@ -461,7 +461,7 @@ public void WeaponAllocator(ArrayList tPlayers, ArrayList ctPlayers, Bombsite bo
 
 				helmet = false;
 
-				if (playerPistolChoice != pistol_choice_ct_usp || playerPistolChoice != pistol_choice_ct_hkp2000 && playerPistolChoice != 0)
+				if ((playerPistolChoice != pistol_choice_ct_usp || playerPistolChoice != pistol_choice_ct_hkp2000) && playerPistolChoice != 0)
 				{
 					kevlar = false;
 				}
