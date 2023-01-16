@@ -293,11 +293,20 @@ public void WeaponAllocator(ArrayList tPlayers, ArrayList ctPlayers, Bombsite bo
 				switch (playerForceChoice)
 				{
 					case force_choice_t_ssg08:
-						primary = "weapon_ssg08";
+					{
+						primary		= "weapon_ssg08";
+						secondary = "weapon_glock";
+					}
 					case force_choice_t_mac10:
-						primary = "weapon_mac10";
+					{
+						primary		= "weapon_mac10";
+						secondary = "weapon_glock";
+					}
 					case force_choice_t_galil:
-						primary = "weapon_galilar";
+					{
+						primary		= "weapon_galilar";
+						secondary = "weapon_glock";
+					}
 					default:
 						secondary = "weapon_deagle";
 				}
@@ -426,11 +435,20 @@ public void WeaponAllocator(ArrayList tPlayers, ArrayList ctPlayers, Bombsite bo
 				switch (playerForceChoice)
 				{
 					case force_choice_ct_ssg08:
-						primary = "weapon_ssg08";
+					{
+						primary		= "weapon_ssg08";
+						secondary = "weapon_usp_silencer";
+					}
 					case force_choice_ct_mp9:
-						primary = "weapon_mp9";
+					{
+						primary		= "weapon_mp9";
+						secondary = "weapon_usp_silencer";
+					}
 					case force_choice_ct_famas:
-						primary = "weapon_famas";
+					{
+						primary		= "weapon_famas";
+						secondary = "weapon_usp_silencer";
+					}
 					default:
 						secondary = "weapon_deagle";
 				}
