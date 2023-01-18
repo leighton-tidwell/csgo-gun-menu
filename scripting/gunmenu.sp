@@ -102,7 +102,7 @@ public Plugin myinfo =
 	name				= "CS Haven: Gun Menu",
 	author			= "CS Haven",
 	description = "Official gun menu for CS Haven servers",
-	version			= "2.0.0",
+	version			= "2.1.0",
 	url					= "https://cs-haven.com/"
 };
 
@@ -177,8 +177,18 @@ public void OnClientCookiesCached(int client)
 
 public void WeaponAllocator(ArrayList tPlayers, ArrayList ctPlayers, Bombsite bombsite)
 {
-	int	 tCount	 = tPlayers.Length;
-	int	 ctCount = ctPlayers.Length;
+	int tCount			 = tPlayers.Length;
+	int ctCount			 = ctPlayers.Length;
+
+	// Reset global counters
+	given_t_he			 = 0;
+	given_ct_he			 = 0;
+	given_t_smoke		 = 0;
+	given_ct_smoke	 = 0;
+	given_t_flash		 = 0;
+	given_ct_flash	 = 0;
+	given_t_molotov	 = 0;
+	given_ct_molotov = 0;
 
 	char primary[WEAPON_STRING_LENGTH];
 	char secondary[WEAPON_STRING_LENGTH];
@@ -479,8 +489,9 @@ public void WeaponAllocator(ArrayList tPlayers, ArrayList ctPlayers, Bombsite bo
 
 				helmet = false;
 
-				if ((playerPistolChoice != pistol_choice_ct_usp || playerPistolChoice != pistol_choice_ct_hkp2000) && playerPistolChoice != 0)
+				if (playerPistolChoice > 2)
 				{
+					// PrintToServer("Pistol choice: %d", playerPistolChoice);
 					kevlar = false;
 				}
 
@@ -493,16 +504,6 @@ public void WeaponAllocator(ArrayList tPlayers, ArrayList ctPlayers, Bombsite bo
 			Retakes_SetPlayerInfo(client, primary, secondary, nades, health, kevlar, helmet, kit);
 		}
 	}
-
-	// Reset global counters
-	given_t_he			 = 0;
-	given_ct_he			 = 0;
-	given_t_smoke		 = 0;
-	given_ct_smoke	 = 0;
-	given_t_flash		 = 0;
-	given_ct_flash	 = 0;
-	given_t_molotov	 = 0;
-	given_ct_molotov = 0;
 }
 
 // Set nades
@@ -519,10 +520,10 @@ static void SetNades(char nades[NADE_STRING_LENGTH], bool isPistolRound, bool te
 	int	 max_smoke					 = terrorist ? GetConVarInt(sm_t_nades_smoke_max) : GetConVarInt(sm_ct_nades_smoke_max);
 	int	 max_he							 = terrorist ? GetConVarInt(sm_t_nades_he_max) : GetConVarInt(sm_ct_nades_he_max);
 
-	bool reached_max_molotov = terrorist ? given_t_molotov == max_molotov : given_ct_molotov == max_molotov;
-	bool reached_max_flash	 = terrorist ? given_t_flash == max_flash : given_ct_flash == max_flash;
-	bool reached_max_smoke	 = terrorist ? given_t_smoke == max_smoke : given_ct_smoke == max_smoke;
-	bool reached_max_he			 = terrorist ? given_t_he == max_he : given_ct_he == max_he;
+	bool reached_max_molotov = terrorist ? given_t_molotov >= max_molotov : given_ct_molotov >= max_molotov;
+	bool reached_max_flash	 = terrorist ? given_t_flash >= max_flash : given_ct_flash >= max_flash;
+	bool reached_max_smoke	 = terrorist ? given_t_smoke >= max_smoke : given_ct_smoke >= max_smoke;
+	bool reached_max_he			 = terrorist ? given_t_he >= max_he : given_ct_he >= max_he;
 
 	int	 rand								 = GetRandomInt(0, 4);
 	if (rand == 0)
