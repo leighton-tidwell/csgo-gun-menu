@@ -132,6 +132,8 @@ public void OnPluginStart()
 	sm_ct_nades_flash_max					= CreateConVar("sm_ct_nades_flash_max", "1", "Maximum flashes allowed for the ct side (0 = disabled)");
 	sm_t_nades_he_max							= CreateConVar("sm_t_nades_he_max", "1", "Maximum hes allowed for the t side (0 = disabled)");
 	sm_ct_nades_he_max						= CreateConVar("sm_ct_nades_he_max", "1", "Maximum hes allowed for the ct side (0 = disabled)");
+
+	AutoExecConfig(true, "cs-haven-gun-menu");
 }
 
 public void OnClientConnected(int client)
